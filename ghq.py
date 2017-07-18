@@ -111,6 +111,31 @@ def test_all_count_author_prs():
     success = success and test_one_count_author_prs({'bc': (2, 3), 'ab': (3, 4), 'cd': (0, 5)}, "ab", True, {'bc': (2, 3), 'ab': (4, 5), 'cd': (0, 5)})
     return success
 
+# function to sort count_author_prs by merged count desc, total count desc, and author
+def sort_authorstats_by_counts(authorstats):
+    return dict(sorted(authorstats.items(), key=lambda x: (-x[1][0], -x[1][1], x[0])))
+
+# function tests sort_authorstats_by_counts function running one test case
+def test_one_sort_authorstats_by_counts(dict, expected):
+    if (sort_authorstats_by_counts(dict) == expected):
+        return True
+    msg = "test_one_sort_authorstats_by_counts with '" + str(dict)
+    msg += " expected '" + str(expected) + "' and got '" + str(sort_authorstats_by_counts(dict)) + "'"
+    print msg
+    return False
+
+# function tests sort_authorstats_by_counts function running all tests
+def test_all_sort_authorstats_by_counts():
+    success = True
+    success = success and test_one_sort_authorstats_by_counts({}, {})
+    success = success and test_one_sort_authorstats_by_counts({'ab': (1, 1)}, {'ab': (1, 1)})
+    success = success and test_one_sort_authorstats_by_counts({'bc': (2, 3), 'ab': (3, 5), 'cd': (0, 5)}, {'ab': (3, 5), 'bc': (2, 3),'cd': (0, 5)})
+    success = success and test_one_sort_authorstats_by_counts({'bc': (2, 3), 'ab': (2, 3), 'cd': (0, 5)}, {'ab': (2, 3), 'bc': (2, 3), 'cd': (0, 5)})
+    success = success and test_one_sort_authorstats_by_counts({'bc': (2, 3), 'ab': (2, 3), 'cd': (2, 5)}, {'cd': (2, 5), 'ab': (2, 3), 'bc': (2, 3)})
+    success = success and test_one_sort_authorstats_by_counts({'bc': (3, 3), 'ab': (2, 3), 'cd': (0, 5)}, {'bc': (3, 3), 'ab': (2, 3), 'cd': (0, 5)})
+    return success
+
+
 
 
 # parse arguments
@@ -135,6 +160,7 @@ if (args.test):    # if testing requested on the command line, run the tests and
     print "test_all_find_jira_id() returned " + str(test_all_find_jira_id())
     print "test_all_count_file() returned " + str(test_all_count_file())
     print "test_all_count_author_prs() returned " + str(test_all_count_author_prs())
+    print "test_all_sort_authorstats_by_counts() returned " + str(test_all_sort_authorstats_by_counts())
     sys.exit()
 
 # read in GitHub credentials
