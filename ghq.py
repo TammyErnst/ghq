@@ -4,6 +4,7 @@ import sys
 import argparse
 from datetime import datetime
 import dateparser
+import re
 
 
 
@@ -15,6 +16,31 @@ def since_to_range_string(since):
     datefrom = dateparser.parse(since)
     print datefrom
     return "from {:%Y-%m-%d %H:%M}".format(datefrom) + " to {:%Y-%m-%d %H:%M}".format(now)
+
+# function returns the input title's JIRA ID (by looking for jira_key input) and '!!!' if no JIRA ID found
+def find_jira_id(title, jira_key):
+    match = re.search('(?:.* )?('+ jira_key +'-[0-9]+)(?: .*)?', title)    # JIRA ID is jira-key followed by hyphon and number
+    if (match == None):   # no JIRA ID fouond
+        return "!!!"
+    else:                 # return the JIRA ID found
+        return match.group(1)
+
+# function tests find_jira_id function running one test case
+def test_one_find_jira_id(title, jira_key, expected):
+    if (find_jira_id(title, jira_key) == expected):
+        return True
+    print "test_one_find_jira_id with '" + title + "' and '" + jira_key + "' expected '" + expected + "' and got '" + find_jira_id(title, jira_key) + "'"
+    return False
+
+# function tests find_jira_id function running all tests
+def test_all_find_jira_id():
+    success = True
+    # success = success and test_one_find_jira_id("Hello World", "JIRA", "nonesense")
+    success = success and test_one_find_jira_id("Hello World BY-1", "BY", "BY-1")
+    success = success and test_one_find_jira_id("BY-123", "BY", "BY-123")
+    success = success and test_one_find_jira_id("BY-321 Flying to the moon", "BY", "BY-321")
+    return success
+
 
 
 
@@ -37,3 +63,7 @@ if ( args.since != None and dateparser.parse(args.since) == None):
 print "*** GitHub repo " + args.repo + " (" + since_to_range_string(args.since) + ") ***"
 
 print "JIRA Key is " + args.jira_key
+
+if (args.test):
+    print "test_all_find_jira_id() returned " + str(test_all_find_jira_id())
+
