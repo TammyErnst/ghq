@@ -35,10 +35,17 @@ def test_one_find_jira_id(title, jira_key, expected):
 # function tests find_jira_id function running all tests
 def test_all_find_jira_id():
     success = True
-    # success = success and test_one_find_jira_id("Hello World", "JIRA", "nonesense")
     success = success and test_one_find_jira_id("Hello World BY-1", "BY", "BY-1")
+    success = success and test_one_find_jira_id("Hello World", "BY", "!!!")
+    success = success and test_one_find_jira_id("Hello World BY", "BY", "!!!")
     success = success and test_one_find_jira_id("BY-123", "BY", "BY-123")
     success = success and test_one_find_jira_id("BY-321 Flying to the moon", "BY", "BY-321")
+    success = success and test_one_find_jira_id("BY-321: Flying to the moon", "BY", "BY-321")
+    success = success and test_one_find_jira_id("Issue HELP-42 It does not work", "HELP", "HELP-42")
+    success = success and test_one_find_jira_id("Issue HELP-42 It does not work", "BY", "!!!")
+    success = success and test_one_find_jira_id("Issue HELP-XXX It does not work", "HELP", "!!!")
+    success = success and test_one_find_jira_id("Issue HELP-??? It does not work", "HELP", "!!!")
+    success = success and test_one_find_jira_id("Issue HELP42 It does not work", "HELP", "!!!")
     return success
 
 
