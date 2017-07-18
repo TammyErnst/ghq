@@ -5,6 +5,7 @@ import argparse
 from datetime import datetime
 import dateparser
 import re
+import getpass
 
 
 
@@ -69,8 +70,18 @@ if ( args.since != None and dateparser.parse(args.since) == None):
 # output title line
 print "*** GitHub repo " + args.repo + " (" + since_to_range_string(args.since) + ") ***"
 
-print "JIRA Key is " + args.jira_key
 
-if (args.test):
+if (args.test):    # if testing requested on the command line, run the tests and exit
     print "test_all_find_jira_id() returned " + str(test_all_find_jira_id())
+    sys.exit()
+
+# read in GitHub credentials
+if sys.stdin.isatty():    # prompt when input device is tty
+   print "Enter GitHub credentials"
+   print >> sys.stderr, "GitHub Username: "    # stderr in case output is being redirected
+   githubusername = raw_input()
+   githubpassword = getpass.getpass("GitHub Password: ")
+else:
+   githubusername = sys.stdin.readline().rstrip()
+   githubpassword = sys.stdin.readline().rstrip()
 
