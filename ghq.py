@@ -7,6 +7,7 @@ import dateparser
 import re
 import getpass
 import os.path
+from github import Github
 
 
 
@@ -57,17 +58,17 @@ def test_all_find_jira_id():
     return success
 
 # function returns dictionary with added record of one more file of that type. takes a dictionary and a filename
-def count_file(dict, filename):
-    type = os.path.splitext(filename)[1][1:]    # split off file type and remove .
-    dict[type] = dict.get(type, 0) + 1          # increase type's count by 1, or add a count of 1
-    return dict
+def count_file(filestats, filename):
+    type = os.path.splitext(filename)[1][1:]        # split off file type and remove .
+    filestats[type] = filestats.get(type, 0) + 1    # increase type's count by 1, or add a count of 1
+    return filestats
 
 # function tests count_file function running one test case
-def test_one_count_file(dict, filename, expected):
-    if (count_file(dict, filename) == expected):
+def test_one_count_file(filestats, filename, expected):
+    if (count_file(filestats, filename) == expected):
         return True
-    msg = "test_one_count_file with '" + str(dict) + "' and '" + str(filename) + "' expected '"
-    msg += str(expected) + "' and got '" + str(count_file(dict, filename)) + "'"
+    msg = "test_one_count_file with '" + str(filestats) + "' and '" + str(filename) + "' expected '"
+    msg += str(expected) + "' and got '" + str(count_file(filestats, filename)) + "'"
     print msg
     return False
 
@@ -83,19 +84,19 @@ def test_all_count_file():
     return success
 
 # function returns dictionary with added record of one more PR by that author with merged and total counts both kept
-def count_author_prs(dict, author, merged):
+def count_author_prs(authorstats, author, merged):
     if merged:
-        dict[author] = (dict.get(author, (0, 0))[0] + 1, dict.get(author, (0, 0))[1] + 1)
+        authorstats[author] = (authorstats.get(author, (0, 0))[0] + 1, authorstats.get(author, (0, 0))[1] + 1)
     else:
-        dict[author] = (dict.get(author, (0, 0))[0], dict.get(author, (0, 0))[1] + 1)
-    return dict
+        authorstats[author] = (authorstats.get(author, (0, 0))[0], authorstats.get(author, (0, 0))[1] + 1)
+    return authorstats
 
 # function tests count_author_prs function running one test case
-def test_one_count_author_prs(dict, author, merged, expected):
-    if (count_author_prs(dict, author, merged) == expected):
+def test_one_count_author_prs(authorstats, author, merged, expected):
+    if (count_author_prs(authorstats, author, merged) == expected):
         return True
-    msg = "test_one_count_author_prs with '" + str(dict) + "' and '" + str(author) + "' and " + str(merged)
-    msg += " expected '" + str(expected) + "' and got '" + str(count_author_prs(dict, author, merged)) + "'"
+    msg = "test_one_count_author_prs with '" + str(authorstats) + "' and '" + str(author) + "' and " + str(merged)
+    msg += " expected '" + str(expected) + "' and got '" + str(count_author_prs(authorstats, author, merged)) + "'"
     print msg
     return False
 
@@ -116,11 +117,11 @@ def sort_authorstats_by_counts(authorstats):
     return dict(sorted(authorstats.items(), key=lambda x: (-x[1][0], -x[1][1], x[0])))
 
 # function tests sort_authorstats_by_counts function running one test case
-def test_one_sort_authorstats_by_counts(dict, expected):
-    if (sort_authorstats_by_counts(dict) == expected):
+def test_one_sort_authorstats_by_counts(authorstats, expected):
+    if (sort_authorstats_by_counts(authorstats) == expected):
         return True
-    msg = "test_one_sort_authorstats_by_counts with '" + str(dict)
-    msg += " expected '" + str(expected) + "' and got '" + str(sort_authorstats_by_counts(dict)) + "'"
+    msg = "test_one_sort_authorstats_by_counts with '" + str(authorstats)
+    msg += " expected '" + str(expected) + "' and got '" + str(sort_authorstats_by_counts(authorstats)) + "'"
     print msg
     return False
 
@@ -148,9 +149,13 @@ args = argparser.parse_args()
 
 
 # validate argument since
-if (args.since != None and dateparser.parse(args.since) == None):
+fromdate = None
+if args.since != None:
+    fromdate = dateparser.parse(args.since)
+if (args.since != None and fromdate == None):
     print "Argument since value '" + args.since + "' could not be parsed.  Try '1 day ago' or '2 months'"
     sys.exit()
+
 
 # output title line
 print "*** GitHub repo " + args.repo + " (" + since_to_range_string(args.since) + ") ***"
@@ -174,13 +179,41 @@ else:
    githubpassword = sys.stdin.readline().rstrip()
 
 # connect to GitHub and the repo
-#githubsession = Github(githubusername, githubpassword)
-#repo = githubsession.get_repo(args.repo)
+githubsession = Github(githubusername, githubpassword)
+repo = githubsession.get_repo(args.repo)
 
 # create dictionary of Pull Request authors
 authorstats = {}
 
-# request the Pull Requests and loop through them
+# request the Pull Requests and loop through them outputting those within time range
+print "Title                                                                     \
+State    Created at    Merged at    Time to merge     JIRA ID      File Stats\n\
+------------------------------------------------------------------------  \
+-------  ------------  -----------  ----------------  -----------  ------------------------"
+pr_line_format = "{:<72}  {:<7}  {:%Y-%m-%d  }  {:<11}  {:<16}  {:<11}  {}"
+for pull in repo.get_pulls("all"):
+    # list and count only pull requests created or merged within range if range given
+    if fromdate == None or pull.created_at >= fromdate or (pull.merged_at and pull.merged_at >= fromdate):
+        count_author_prs(authorstats, pull.user.login, pull.merged)
+        filestats = {}
+        for file in pull.get_files():
+            filestats  = count_file(filestats, file.filename.encode('ascii','replace'))
+        if pull.merged_at:
+            mergedate = "{:%Y-%m-%d}".format(pull.merged_at)
+            mergelength = str(pull.merged_at - pull.created_at).split(".")[0]
+        else:
+            mergedate = "---"
+            mergelength = "---"
+        print pr_line_format.format(pull.title.encode('ascii', 'replace')[:72], pull.state, pull.created_at, mergedate, mergelength, \
+            find_jira_id(pull.title.encode('ascii', 'replace'), args.jira_key), str(filestats).split("{")[1].split("}")[0])
 
+# sort and print the author stats
+print "\n*** Authors ***\n\
+Author          Merged PRs    All PRs\n\
+------------  ------------  ---------"
+
+line_format = "{:<12}  {:>12}  {:>9}"
+for author, stats in authorstats.iteritems():
+    print line_format.format(author, stats[0], stats[1])
 
 
