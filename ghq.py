@@ -211,7 +211,6 @@ for pull in repo.get_pulls("all"):
 print "\n*** Authors ***\n\
 Author          Merged PRs    All PRs\n\
 ------------  ------------  ---------"
-
 line_format = "{:<12}  {:>12}  {:>9}"
 for author, stats in authorstats.iteritems():
     print line_format.format(author, stats[0], stats[1])
